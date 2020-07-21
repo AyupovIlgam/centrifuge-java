@@ -1,209 +1,95 @@
 package io.github.centrifugal.centrifuge.example;
 
 import io.github.centrifugal.centrifuge.Client;
-import io.github.centrifugal.centrifuge.DuplicateSubscriptionException;
-import io.github.centrifugal.centrifuge.PresenceStatsResult;
-import io.github.centrifugal.centrifuge.RefreshEvent;
-import io.github.centrifugal.centrifuge.ReplyCallback;
-import io.github.centrifugal.centrifuge.JoinEvent;
-import io.github.centrifugal.centrifuge.LeaveEvent;
-import io.github.centrifugal.centrifuge.Options;
-import io.github.centrifugal.centrifuge.EventListener;
-import io.github.centrifugal.centrifuge.PublishResult;
-import io.github.centrifugal.centrifuge.ReplyError;
-import io.github.centrifugal.centrifuge.Subscription;
-import io.github.centrifugal.centrifuge.SubscriptionEventListener;
-import io.github.centrifugal.centrifuge.ConnectEvent;
-import io.github.centrifugal.centrifuge.DisconnectEvent;
-import io.github.centrifugal.centrifuge.ErrorEvent;
-import io.github.centrifugal.centrifuge.MessageEvent;
-import io.github.centrifugal.centrifuge.PrivateSubEvent;
-import io.github.centrifugal.centrifuge.PublishEvent;
-import io.github.centrifugal.centrifuge.SubscribeErrorEvent;
-import io.github.centrifugal.centrifuge.SubscribeSuccessEvent;
-import io.github.centrifugal.centrifuge.TokenCallback;
-import io.github.centrifugal.centrifuge.UnsubscribeEvent;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
+import io.github.centrifugal.centrifuge.ClientEventListener;
+import io.github.centrifugal.centrifuge.ClientOptions;
+import io.github.centrifugal.centrifuge.subscriptions.Subscription;
+import io.github.centrifugal.centrifuge.subscriptions.SubscriptionEventListener;
 
 public class Main {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
-
     public static void main(String[] args) {
-        LOGGER.info("Initialize Client client");
 
-        EventListener listener = new EventListener() {
-            @Override
-            public void onConnect(Client client, ConnectEvent event) {
-                System.out.println("connected");
-            }
+        // 1 Step
+        ClientOptions clientOptions = new ClientOptions();
+        clientOptions.setTimeout(10000);
+        clientOptions.setPingInterval(10000);
+        //options.setInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY));
+        clientOptions.setLogsEnabled(true); // BuildConfig.DEBUG
 
+        // 2 Step
+        SubscriptionEventListener subscriptionEventListener = new SubscriptionEventListener() {
             @Override
-            public void onDisconnect(Client client, DisconnectEvent event) {
-                System.out.printf("disconnected %s, reconnect %s%n", event.getReason(), event.getReconnect());
-            }
-
-            @Override
-            public void onError(Client client, ErrorEvent event) {
-                System.out.println("There was a problem connecting!");
+            public void onPrivateSub(Client client, PrivateSubEvent event, PrivateSubTokenCallback cb) {
+                super.onPrivateSub(client, event, cb);
             }
 
             @Override
-            public void onPrivateSub(Client client, PrivateSubEvent event, TokenCallback cb) {
-                cb.Done("boom");
+            public void onSubscribeSuccess(Subscription subscription, SubscribeSuccessEvent event) {
+                super.onSubscribeSuccess(subscription, event);
             }
 
             @Override
-            public void onRefresh(Client client, RefreshEvent event, TokenCallback cb) {
-                cb.Done("boom");
+            public void onSubscribeError(Subscription subscription, SubscribeErrorEvent event) {
+                super.onSubscribeError(subscription, event);
             }
 
             @Override
-            public void onMessage(Client client, MessageEvent event) {
-                String data = new String(event.getData(), UTF_8);
-                System.out.println("message received: " + data);
+            public void onPublication(Subscription subscription, PublicationEvent event) {
+                super.onPublication(subscription, event);
             }
-        };
 
-        Client client = new Client(
-                "ws://localhost:8000/connection/websocket?format=protobuf",
-                new Options(),
-                listener
-        );
-        client.setToken("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0c3VpdGVfand0In0.hPmHsVqvtY88PvK4EmJlcdwNuKFuy3BGaF7dMaKdPlw");
-        client.connect();
+            @Override
+            public void onJoin(Subscription subscription, JoinEvent event) {
+                super.onJoin(subscription, event);
+            }
 
-        SubscriptionEventListener subListener = new SubscriptionEventListener() {
             @Override
-            public void onSubscribeSuccess(Subscription sub, SubscribeSuccessEvent event) {
-                System.out.println("subscribed to " + sub.getChannel());
-                String data="{\"input\": \"I just subscribed to channel\"}";
-                sub.publish(data.getBytes(), new ReplyCallback<PublishResult>() {
-                    @Override
-                    public void onFailure(Throwable e) {
-                        System.out.println("sub publish error: " + e);
-                    }
+            public void onLeave(Subscription subscription, LeaveEvent event) {
+                super.onLeave(subscription, event);
+            }
 
-                    @Override
-                    public void onDone(ReplyError err, PublishResult res) {
-                        if (err != null) {
-                            System.out.println("error publish: " + err.getMessage());
-                            return;
-                        }
-                        System.out.println("successfully published");
-                    }
-                });
-            }
             @Override
-            public void onSubscribeError(Subscription sub, SubscribeErrorEvent event) {
-                System.out.println("subscribe error " + sub.getChannel() + " " + event.getMessage());
-            }
-            @Override
-            public void onPublish(Subscription sub, PublishEvent event) {
-                String data = new String(event.getData(), UTF_8);
-                System.out.println("message from " + sub.getChannel() + " " + data);
-            }
-            @Override
-            public void onUnsubscribe(Subscription sub, UnsubscribeEvent event) {
-                System.out.println("unsubscribed " + sub.getChannel());
-            }
-            @Override
-            public void onJoin(Subscription sub, JoinEvent event) {
-                System.out.println("client " + event.getInfo().getClient() + " joined channel " + sub.getChannel());
-            }
-            @Override
-            public void onLeave(Subscription sub, LeaveEvent event) {
-                System.out.println("client " + event.getInfo().getClient() + " left channel " + sub.getChannel());
+            public void onUnsubscribe(Subscription subscription, UnsubscribeEvent event) {
+                super.onUnsubscribe(subscription, event);
             }
         };
 
-        Subscription sub;
-        try {
-            sub = client.newSubscription("chat:index", subListener);
-        } catch (DuplicateSubscriptionException e) {
-            e.printStackTrace();
-            return;
-        }
-        sub.subscribe();
-
-        String data="{\"input\": \"hi from Java\"}";
-
-        // Publish to channel (won't wait until client subscribed to channel).
-        // This message most probably won't be received by this client.
-        // You need to wait for subscription success to reliably receive
-        // publication - see publishing over sub object below.
-        client.publish("chat:index", data.getBytes(), new ReplyCallback<PublishResult>() {
+        // 3 Step
+        ClientEventListener clientEventListener = new ClientEventListener() {
             @Override
-            public void onFailure(Throwable e) {
-                System.out.println("publish error: " + e);
+            public void onConnect(Client client, ConnectData data) {
+                super.onConnect(client, data);
+                client.subscribe("channel", subscriptionEventListener);
             }
 
             @Override
-            public void onDone(ReplyError err, PublishResult reply) {
-                if (err != null) {
-                    System.out.println("error publish: " + err.getMessage());
-                    return;
-                }
-                System.out.println("successfully published");
-            }
-        });
-
-        // Publish via subscription (will wait for subscribe success before publishing).
-        sub.publish(data.getBytes(), new ReplyCallback<PublishResult>() {
-            @Override
-            public void onFailure(Throwable e) {
-                System.out.println("sub publish error: " + e);
+            public void onMessage(Client client, MessageData data) {
+                super.onMessage(client, data);
             }
 
             @Override
-            public void onDone(ReplyError err, PublishResult res) {
-                if (err != null) {
-                    System.out.println("error publish: " + err.getMessage());
-                    return;
-                }
-                System.out.println("successfully published");
-            }
-        });
-
-        sub.presenceStats(new ReplyCallback<PresenceStatsResult>() {
-            @Override
-            public void onFailure(Throwable e) {
-                System.out.println("presence stats error: " + e);
+            public void onRefresh(Client client, RefreshTokenData data, RefreshTokenCallback cb) {
+                super.onRefresh(client, data, cb);
+                // Refresh token and call:
+                cb.onSuccess("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0c3VpdGVfand0In0.hPmHsVqvtY88PvK4EmJlcdwNuKFuy3BGaF7dMaKdPlw");
             }
 
             @Override
-            public void onDone(ReplyError err, PresenceStatsResult res) {
-                if (err != null) {
-                    System.out.println("error presence stats: " + err.getMessage());
-                    return;
-                }
-                System.out.println("Num clients connected: " + res.getNumClients());
+            public void onDisconnect(Client client, DisconnectData data) {
+                super.onDisconnect(client, data);
+                client.unsubscribe("channel");
             }
-        });
 
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-        }
+            @Override
+            public void onError(Client client, ErrorData data) {
+                super.onError(client, data);
+            }
+        };
 
-        sub.unsubscribe();
-
-        // Say Client that we finished with Subscription. It will be removed from
-        // internal Subscription map so you can create new Subscription to channel
-        // later calling newSubscription method again.
-        client.removeSubscription(sub);
-
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-        }
-        // Disconnect from server.
-        client.disconnect();
+        // 4 Step
+        Client client = new Client(clientOptions, clientEventListener, "ws://192.168.1.35:8000/connection/websocket?format=protobuf");
+        // Request your own token
+        client.connect("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0c3VpdGVfand0In0.hPmHsVqvtY88PvK4EmJlcdwNuKFuy3BGaF7dMaKdPlw");
     }
 }

@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Android demo project</string>
+    <string name="connected">Connected</string>
+    <string name="disconnected">Disconnected</string>
 </resources>

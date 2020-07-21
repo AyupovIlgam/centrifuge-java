@@ -4,40 +4,11 @@ This is a Websocket client for Centrifugo and Centrifuge library. Client uses Pr
 
 ## Status of library
 
-This library is feature rich and supports almost all available Centrifuge/Centrifugo features (see matrix below). But it's very young and not tested in production application yet. Any help and feedback is very appreciated to make it production ready and update library status. Any report will give us an understanding that the library works, is useful and we should continue developing it. Please share your stories.
-
-## Installation
-
-Library available in Maven: https://search.maven.org/artifact/io.github.centrifugal/centrifuge-java
-
-## Javadoc online
-
-http://www.javadoc.io/doc/io.github.centrifugal/centrifuge-java
+This library is very young and not tested in production application yet. Any help and feedback is very appreciated to make it production ready and update library status. Any report will give us an understanding that the library works, is useful and we should continue developing it. Please share your stories.
 
 ## Basic usage
 
-Connect to server based on Centrifuge library:
-
-```java
-EventListener listener = new EventListener() {
-    @Override
-    public void onConnect(Client client, ConnectEvent event) {
-        System.out.println("connected");
-    }
-
-    @Override
-    public void onDisconnect(Client client, DisconnectEvent event) {
-        System.out.printf("disconnected %s, reconnect %s%n", event.getReason(), event.getReconnect());
-    }
-};
-
-Client client = new Client(
-        "ws://localhost:8000/connection/websocket?format=protobuf",
-        new Options(),
-        listener
-);
-client.connect();
-```
+See more example code in [console Java example](https://github.com/AyupovIlgam/centrifuge-java/tree/master/example/src/main/java/io/github/centrifugal/centrifuge/example/Main.java) or in [demo Android app](https://github.com/AyupovIlgam/centrifuge-java/tree/master/demo/src/main/java/io/github/centrifugal/centrifuge/demo/MainActivity.java)
 
 Note that *you must use* `?format=protobuf` in connection URL as this client communicates with Centrifugo/Centrifuge over Protobuf protocol.
 
@@ -45,78 +16,11 @@ Also in case of running in Android emulator don't forget to use proper connectio
 
 To connect to Centrifugo you need to additionally set connection JWT:
 
-```java
-...
-Client client = new Client(
-        "ws://localhost:8000/connection/websocket?format=protobuf",
-        new Options(),
-        listener
-);
-client.setToken("YOUR CONNECTION JWT")
-client.connect()
-```
-
-Now let's look at how to subscribe to channel and listen to messages published into it:
-
-```java
-EventListener listener = new EventListener() {
-    @Override
-    public void onConnect(Client client, ConnectEvent event) {
-        System.out.println("connected");
-    }
-
-    @Override
-    public void onDisconnect(Client client, DisconnectEvent event) {
-        System.out.printf("disconnected %s, reconnect %s%n", event.getReason(), event.getReconnect());
-    }
-};
-
-SubscriptionEventListener subListener = new SubscriptionEventListener() {
-    @Override
-    public void onSubscribeSuccess(Subscription sub, SubscribeSuccessEvent event) {
-        System.out.println("subscribed to " + sub.getChannel());
-    }
-    @Override
-    public void onSubscribeError(Subscription sub, SubscribeErrorEvent event) {
-        System.out.println("subscribe error " + sub.getChannel() + " " + event.getMessage());
-    }
-    @Override
-    public void onPublish(Subscription sub, PublishEvent event) {
-        String data = new String(event.getData(), UTF_8);
-        System.out.println("message from " + sub.getChannel() + " " + data);
-    }
-}
-
-Client client = new Client(
-        "ws://localhost:8000/connection/websocket?format=protobuf",
-        new Options(),
-        listener
-);
-// If using Centrifugo.
-client.setToken("YOUR CONNECTION JWT")
-client.connect()
-
-Subscription sub;
-try {
-    sub = client.newSubscription("chat:index", subListener);
-} catch (DuplicateSubscriptionException e) {
-    e.printStackTrace();
-    return;
-}
-sub.subscribe();
-```
-
-See more example code in [console Java example](https://github.com/centrifugal/centrifuge-java/blob/master/example/src/main/java/io/github/centrifugal/centrifuge/example/Main.java) or in [demo Android app](https://github.com/centrifugal/centrifuge-java/blob/master/demo/src/main/java/io/github/centrifugal/centrifuge/demo/MainActivity.java)
-
 To use with Android don't forget to set INTERNET permission to `AndroidManifest.xml`:
 
 ```
 <uses-permission android:name="android.permission.INTERNET" />
 ```
-
-## CI status
-
-[![Build Status](https://travis-ci.org/centrifugal/centrifuge-java.svg)](https://travis-ci.org/centrifugal/centrifuge-java)
 
 ## Feature matrix
 
@@ -164,23 +68,4 @@ Library is available under the MIT license. See LICENSE for details.
 
 ## Contributors
 
-* Thanks to [Maks Atygaev](https://github.com/atygaev) for initial library boilerplate
-
-## Release
-
-Bump version in `centrifuge/build.gradle`. Write changelog. Create new library tag. Then run:
-
-```
-./gradlew uploadArchives
-```
-
-Then follow instructions:
-
-https://central.sonatype.org/pages/releasing-the-deployment.html
-
-I.e.
-
-1) Login here: https://oss.sonatype.org/
-2) Go to `Staging repositories`
-3) Find release, push `Close` button, wait
-4) Push `Release` button
+* Thanks to [Alexander Emelin](https://github.com/FZambia) for initial library setup

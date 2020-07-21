@@ -1,23 +1,15 @@
 package io.github.centrifugal.centrifuge.demo;
 
-import android.annotation.SuppressLint;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.widget.TextView;
 
-import io.github.centrifugal.centrifuge.Client;
-import io.github.centrifugal.centrifuge.ConnectEvent;
-import io.github.centrifugal.centrifuge.DisconnectEvent;
-import io.github.centrifugal.centrifuge.EventListener;
-import io.github.centrifugal.centrifuge.Options;
-import io.github.centrifugal.centrifuge.PublishEvent;
-import io.github.centrifugal.centrifuge.SubscribeErrorEvent;
-import io.github.centrifugal.centrifuge.SubscribeSuccessEvent;
-import io.github.centrifugal.centrifuge.Subscription;
-import io.github.centrifugal.centrifuge.SubscriptionEventListener;
-import io.github.centrifugal.centrifuge.UnsubscribeEvent;
+import androidx.appcompat.app.AppCompatActivity;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
+import io.github.centrifugal.centrifuge.Client;
+import io.github.centrifugal.centrifuge.ClientEventListener;
+import io.github.centrifugal.centrifuge.ClientOptions;
+import io.github.centrifugal.centrifuge.subscriptions.Subscription;
+import io.github.centrifugal.centrifuge.subscriptions.SubscriptionEventListener;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -27,58 +19,88 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         TextView tv = findViewById(R.id.text);
 
-        EventListener listener = new EventListener() {
-            @SuppressLint("SetTextI18n")
+        // 1 Step
+        ClientOptions clientOptions = new ClientOptions();
+        clientOptions.setTimeout(10000);
+        clientOptions.setPingInterval(10000);
+        //options.setInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY));
+        clientOptions.setLogsEnabled(true); // BuildConfig.DEBUG
+
+        // 2 Step
+        SubscriptionEventListener subscriptionEventListener = new SubscriptionEventListener() {
             @Override
-            public void onConnect(Client client, ConnectEvent event) {
-                MainActivity.this.runOnUiThread(() -> tv.setText("Connected with client ID " + event.getClient()));
+            public void onPrivateSub(Client client, PrivateSubEvent event, PrivateSubTokenCallback cb) {
+                super.onPrivateSub(client, event, cb);
             }
-            @SuppressLint("SetTextI18n")
+
             @Override
-            public void onDisconnect(Client client, DisconnectEvent event) {
-                MainActivity.this.runOnUiThread(() -> tv.setText("Disconnected: " + event.getReason()));
+            public void onSubscribeSuccess(Subscription subscription, SubscribeSuccessEvent event) {
+                super.onSubscribeSuccess(subscription, event);
+            }
+
+            @Override
+            public void onSubscribeError(Subscription subscription, SubscribeErrorEvent event) {
+                super.onSubscribeError(subscription, event);
+            }
+
+            @Override
+            public void onPublication(Subscription subscription, PublicationEvent event) {
+                super.onPublication(subscription, event);
+            }
+
+            @Override
+            public void onJoin(Subscription subscription, JoinEvent event) {
+                super.onJoin(subscription, event);
+            }
+
+            @Override
+            public void onLeave(Subscription subscription, LeaveEvent event) {
+                super.onLeave(subscription, event);
+            }
+
+            @Override
+            public void onUnsubscribe(Subscription subscription, UnsubscribeEvent event) {
+                super.onUnsubscribe(subscription, event);
             }
         };
 
-        Client client = new Client(
-                "ws://192.168.1.35:8000/connection/websocket?format=protobuf",
-                new Options(),
-                listener
-        );
-        client.setToken("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0c3VpdGVfand0In0.hPmHsVqvtY88PvK4EmJlcdwNuKFuy3BGaF7dMaKdPlw");
-        client.connect();
+        // 3 Step
+        ClientEventListener clientEventListener = new ClientEventListener() {
+            @Override
+            public void onConnect(Client client, ConnectData data) {
+                super.onConnect(client, data);
+                MainActivity.this.runOnUiThread(() -> tv.setText(R.string.connected));
+                client.subscribe("channel", subscriptionEventListener);
+            }
 
-        SubscriptionEventListener subListener = new SubscriptionEventListener() {
-            @SuppressLint("SetTextI18n")
             @Override
-            public void onSubscribeSuccess(Subscription sub, SubscribeSuccessEvent event) {
-                MainActivity.this.runOnUiThread(() -> tv.setText("Subscribed to " + sub.getChannel()));
+            public void onMessage(Client client, MessageData data) {
+                super.onMessage(client, data);
             }
-            @SuppressLint("SetTextI18n")
+
             @Override
-            public void onSubscribeError(Subscription sub, SubscribeErrorEvent event) {
-                MainActivity.this.runOnUiThread(() -> tv.setText("Subscribe error " + sub.getChannel() + ": " + event.getMessage()));
+            public void onRefresh(Client client, RefreshTokenData data, RefreshTokenCallback cb) {
+                super.onRefresh(client, data, cb);
+                // Refresh token and call:
+                cb.onSuccess("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0c3VpdGVfand0In0.hPmHsVqvtY88PvK4EmJlcdwNuKFuy3BGaF7dMaKdPlw");
             }
-            @SuppressLint("SetTextI18n")
+
             @Override
-            public void onPublish(Subscription sub, PublishEvent event) {
-                String data = new String(event.getData(), UTF_8);
-                MainActivity.this.runOnUiThread(() -> tv.setText("Message from " + sub.getChannel() + ": " + data));
+            public void onDisconnect(Client client, DisconnectData data) {
+                super.onDisconnect(client, data);
+                MainActivity.this.runOnUiThread(() -> tv.setText(R.string.disconnected));
+                client.unsubscribe("channel");
             }
-            @SuppressLint("SetTextI18n")
+
             @Override
-            public void onUnsubscribe(Subscription sub, UnsubscribeEvent event) {
-                MainActivity.this.runOnUiThread(() -> tv.setText("Unsubscribed from " + sub.getChannel()));
+            public void onError(Client client, ErrorData data) {
+                super.onError(client, data);
             }
         };
 
-        Subscription sub;
-        try {
-            sub = client.newSubscription("chat:index", subListener);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return;
-        }
-        sub.subscribe();
+        // 4 Step
+        Client client = new Client(clientOptions, clientEventListener, "ws://192.168.1.35:8000/connection/websocket?format=protobuf");
+        // Request your own token
+        client.connect("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0c3VpdGVfand0In0.hPmHsVqvtY88PvK4EmJlcdwNuKFuy3BGaF7dMaKdPlw");
     }
 }
