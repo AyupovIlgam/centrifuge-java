@@ -4,7 +4,7 @@ This is a Websocket client for Centrifugo and Centrifuge library. Client uses Pr
 
 ## Status of library
 
-This library is very young and not tested in production application yet. Any help and feedback is very appreciated to make it production ready and update library status. Any report will give us an understanding that the library works, is useful and we should continue developing it. Please share your stories.
+This library is developed by Ilgam Ayupov for Chocolife application. It is tested in production application and is stable. However any feedback is appreciated.
 
 ## Basic usage
 
